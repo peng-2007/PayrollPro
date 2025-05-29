@@ -22,12 +22,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 (async () => {
-  // 首先设置SSO认证
+  // 首先注册API路由
+  const server = await registerRoutes(app);
+  
+  // 然后设置SSO认证（放在API路由之后）
   console.log('Setting up SSO authentication...');
   await setupSSO(app);
-
-  // 然后注册其他路由
-  const server = await registerRoutes(app);
 
   if (app.get("env") === "development") {
     await setupVite(app, server);

@@ -104,29 +104,42 @@ function Router() {
   // 检查用户认证状态
   useEffect(() => {
     async function checkAuth() {
-      console.log('Checking authentication...');
+      console.log('正在检查认证状态...');
       try {
         const res = await apiRequest('GET', '/api/auth/me');
         const userData = await res.json();
-        console.log('User authenticated:', userData);
+        console.log('用户已认证:', userData);
         setUser(userData);
         setLoading(false);
       } catch (error) {
-        console.log('User not authenticated');
-        // 如果认证失败，检查是否有SSO回调参数
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('token') || urlParams.get('userId')) {
-          // 有SSO参数，说明可能是SSO回调，保持loading状态让SSO处理
-          console.log('SSO callback detected, waiting for redirect...');
-          // 设置一个超时，防止无限等待
-          setTimeout(() => {
-            console.log('SSO callback timeout, showing login page');
-            setLoading(false);
-          }, 5000);
-          return;
+        console.log('用户未认证，尝试演示登录...');
+        
+        // 尝试自动演示登录
+        try {
+          const demoRes = await apiRequest('POST', '/api/auth/demo-login');
+          const demoUserData = await demoRes.json();
+          console.log('演示登录成功:', demoUserData);
+          setUser(demoUserData);
+          toast({
+            title: "欢迎使用薪酬管理系统",
+            description: `您已以演示管理员身份登录：${demoUserData.firstName}${demoUserData.lastName}`,
+          });
+          setLoading(false);
+        } catch (demoError) {
+          console.error('演示登录失败:', demoError);
+          // 检查是否有SSO回调参数
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('token') || urlParams.get('userId')) {
+            console.log('检测到SSO回调，等待重定向...');
+            setTimeout(() => {
+              console.log('SSO回调超时，显示登录页面');
+              setLoading(false);
+            }, 5000);
+            return;
+          }
+          console.log('显示认证页面');
+          setLoading(false);
         }
-        console.log('No SSO callback detected, showing auth page');
-        setLoading(false);
       }
     }
 

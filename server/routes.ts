@@ -104,9 +104,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // 添加演示用户自动登录路由
+  app.post("/api/auth/demo-login", async (req, res) => {
+    try {
+      // 创建或获取演示用户
+      let demoUser = await storage.getUserByUsername("demo_admin");
+      
+      if (!demoUser) {
+        // 创建演示管理员用户
+        demoUser = await storage.createUser({
+          username: "demo_admin",
+          password: "demo123", // 演示密码
+          role: "admin",
+          firstName: "演示",
+          lastName: "管理员",
+          email: "demo@payroll.com",
+          department: "管理部门",
+          position: "系统管理员"
+        });
+      }
+
+      // 设置会话
+      req.session.userId = demoUser.id;
+      req.session.username = demoUser.username;
+      req.session.userRole = demoUser.role;
+
+      console.log(`演示用户登录成功: ${demoUser.username}`);
+      
+      return res.status(200).json({
+        id: demoUser.id,
+        username: demoUser.username,
+        role: demoUser.role,
+        firstName: demoUser.firstName,
+        lastName: demoUser.lastName,
+        email: demoUser.email,
+        department: demoUser.department,
+        position: demoUser.position
+      });
+    } catch (error) {
+      console.error("演示登录失败:", error);
+      return res.status(500).json({ message: "演示登录失败" });
+    }
+  });
+
   app.get("/api/auth/me", async (req, res) => {
+    console.log("检查用户认证状态:", !!req.session.userId);
+    console.log("当前用户:", req.session.userId);
+    
     if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
+      return res.status(401).json({ message: "未授权" });
     }
 
     try {
@@ -114,13 +160,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         req.session.destroy(() => {});
-        return res.status(401).json({ message: "User not found" });
+        return res.status(401).json({ message: "用户不存在" });
       }
 
       return res.status(200).json({
         id: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        department: user.department,
+        position: user.position
       });
     } catch (error) {
       console.error("Auth error:", error);
