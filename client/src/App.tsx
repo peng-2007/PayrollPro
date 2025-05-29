@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Route, Switch, useLocation, Router } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import Dashboard from "@/pages/dashboard";
