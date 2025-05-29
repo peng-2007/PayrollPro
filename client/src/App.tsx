@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { Route, Switch } from "wouter";
+import { AuthPage } from "./pages/auth";
 
 interface User {
   id: number;
@@ -8,6 +10,7 @@ interface User {
   firstName?: string;
   lastName?: string;
   email?: string;
+  ssoId?: string;
 }
 
 async function apiRequest(method: string, path: string, data?: unknown) {
@@ -54,6 +57,26 @@ function App() {
     checkAuth();
   }, []);
 
+  // 处理本地登录
+  const handleLogin = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const response = await apiRequest('POST', '/api/auth/login', {
+        username,
+        password
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('登录失败:', error);
+      return false;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -66,21 +89,7 @@ function App() {
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-          <h2 className="text-2xl font-bold text-center mb-6">登录</h2>
-          <div className="space-y-4">
-            <button
-              onClick={() => window.location.href = '/api/sso/login'}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-            >
-              使用SSO登录
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return <AuthPage onLogin={handleLogin} />;
   }
 
   return (
@@ -111,6 +120,7 @@ function App() {
               <h2 className="text-2xl font-bold mb-4">仪表板</h2>
               <p>欢迎使用薪资管理系统！</p>
               <p>用户: {user.username} ({user.role})</p>
+              {user.ssoId && <p>SSO用户 ID: {user.ssoId}</p>}
             </div>
           </Route>
           <Route>

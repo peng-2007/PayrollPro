@@ -412,12 +412,22 @@ export async function setupSSO(app: Express) {
                     ssoId: user.ssoId, // 标识这是SSO用户
                 };
 
+                // 手动设置会话，兼容普通路由的会话格式
+                req.session.userId = safeUser.id;
+                req.session.username = safeUser.username;
+                req.session.userRole = safeUser.role;
+
                 req.login(safeUser, (err) => {
                     if (err) {
                         console.error("登录错误:", err);
                         return res.redirect("/auth?error=session_error");
                     }
                     console.log("用户登录成功:", safeUser.username);
+                    console.log("会话数据:", {
+                        userId: req.session.userId,
+                        username: req.session.username,
+                        userRole: req.session.userRole
+                    });
 
                     // 确保会话保存后再重定向
                     req.session.save((saveErr) => {

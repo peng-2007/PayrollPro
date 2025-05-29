@@ -64,7 +64,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     }
   }, [toast]);
 
-  // 处理普通登录
+  // 处理本地登录
   const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -80,6 +80,41 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       toast({
         title: "登录失败",
         description: "用户名或密码错误",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 处理演示登录
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/demo-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast({
+          title: "登录成功",
+          description: "已使用演示账户登录",
+        });
+        setLocation('/');
+      } else {
+        throw new Error('演示登录失败');
+      }
+    } catch (err) {
+      setError('演示登录失败');
+      toast({
+        title: "登录失败",
+        description: "演示登录失败，请重试",
         variant: "destructive",
       });
     } finally {
@@ -126,34 +161,11 @@ export function AuthPage({ onLogin }: AuthPageProps) {
             </Alert>
           )}
 
-          <Tabs defaultValue="sso" className="w-full">
+          <Tabs defaultValue="local" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="local">账号登录</TabsTrigger>
               <TabsTrigger value="sso">SSO登录</TabsTrigger>
-              <TabsTrigger value="local">本地登录</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="sso" className="space-y-4">
-              <div className="text-center space-y-4">
-                <div className="text-sm text-gray-600 mb-4">
-                  使用您的企业账户登录
-                </div>
-                
-                <Button 
-                  onClick={handleSSOLogin}
-                  className="w-full h-12 text-base font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
-                  disabled={loading}
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {loading ? '登录中...' : '使用SSO登录'}
-                </Button>
-                
-                <div className="text-xs text-gray-500">
-                  将跳转到企业认证页面进行登录
-                </div>
-              </div>
-            </TabsContent>
             
             <TabsContent value="local" className="space-y-4">
               <form onSubmit={handleLocalLogin} className="space-y-4">
@@ -196,9 +208,46 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                 </Button>
               </form>
               
+              <Separator className="my-4" />
+              
+              <Button 
+                onClick={handleDemoLogin}
+                variant="outline"
+                className="w-full h-10"
+                disabled={loading}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                {loading ? '登录中...' : '演示账户登录'}
+              </Button>
+              
               <div className="text-center">
                 <div className="text-xs text-gray-500">
-                  默认管理员账户：admin / admin
+                  演示账户：demo_admin / demo123
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="sso" className="space-y-4">
+              <div className="text-center space-y-4">
+                <div className="text-sm text-gray-600 mb-4">
+                  使用您的企业账户登录
+                </div>
+                
+                <Button 
+                  onClick={handleSSOLogin}
+                  className="w-full h-12 text-base font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
+                  disabled={loading}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {loading ? '登录中...' : '使用SSO登录'}
+                </Button>
+                
+                <div className="text-xs text-gray-500">
+                  将跳转到企业认证页面进行登录
                 </div>
               </div>
             </TabsContent>
