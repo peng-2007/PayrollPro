@@ -110,6 +110,7 @@ function Router() {
         const userData = await res.json();
         console.log('User authenticated:', userData);
         setUser(userData);
+        setLoading(false);
       } catch (error) {
         console.log('User not authenticated');
         // 如果认证失败，检查是否有SSO回调参数
@@ -124,9 +125,9 @@ function Router() {
           }, 5000);
           return;
         }
-        console.error('Authentication check failed', error);
+        console.log('No SSO callback detected, showing auth page');
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     checkAuth();
