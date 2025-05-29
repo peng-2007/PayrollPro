@@ -1,7 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import session from "express-session";
 import { z } from "zod";
 import {
   insertEmployeeSchema,
@@ -20,9 +19,6 @@ import {
   extendedUserSchema
 } from "@shared/schema";
 import { evaluate } from "mathjs";
-import memorystore from "memorystore";
-
-const MemoryStore = memorystore(session);
 
 // Helper function to validate payload against schema
 function validatePayload<T>(schema: z.ZodType<T>, data: unknown): T {
@@ -30,46 +26,32 @@ function validatePayload<T>(schema: z.ZodType<T>, data: unknown): T {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup session middleware
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "payroll-app-secret",
-      resave: false,
-      saveUninitialized: false,
-      store: new MemoryStore({
-        checkPeriod: 86400000 // prune expired entries every 24h
-      }),
-      cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax"
-      }
-    })
-  );
+  // Session middleware is now configured in ssoAuth.ts using PostgreSQL
 
   // Authentication middleware
   const authenticate = (req: Request, res: Response, next: Function) => {
-    // 优先检查SSO认证状态（Passport）
+    // 检查Passport认证状态
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
       return next();
     }
     
-    // 然后检查传统session认证
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    // 检查传统session认证（向后兼容）
+    if (req.session && req.session.userId) {
+      return next();
     }
-    next();
+    
+    return res.status(401).json({ message: "Unauthorized" });
   };
 
   // Role-based access control middleware
   const authorize = (roles: string[]) => (req: Request, res: Response, next: Function) => {
     let userRole: string | undefined;
     
-    // 优先检查SSO用户角色
+    // 优先检查Passport用户角色
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
       userRole = (req.user as any).role;
-    } else if (req.session.userRole) {
-      // 检查传统session用户角色
+    } else if (req.session && req.session.userRole) {
+      // 检查传统session用户角色（向后兼容）
       userRole = req.session.userRole;
     }
     
@@ -77,6 +59,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
+  };
+
+  // Helper function to get current user ID
+  const getCurrentUserId = (req: Request): number | undefined => {
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      return (req.user as any).id;
+    }
+    return req.session?.userId;
   };
 
   // Auth routes
@@ -94,15 +84,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Store user info in session
-      req.session.userId = user.id;
-      req.session.username = user.username;
-      req.session.userRole = user.role;
-
-      return res.status(200).json({
-        id: user.id,
-        username: user.username,
-        role: user.role
+      // 使用Passport登录以确保session一致性
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Login session error:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+        
+        return res.status(200).json({
+          id: user.id,
+          username: user.username,
+          role: user.role
+        });
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -140,22 +133,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 设置会话
-      req.session.userId = demoUser.id;
-      req.session.username = demoUser.username;
-      req.session.userRole = demoUser.role;
+      // 使用Passport登录以确保session一致性
+      req.login(demoUser, (err) => {
+        if (err) {
+          console.error("演示登录session错误:", err);
+          return res.status(500).json({ message: "演示登录失败" });
+        }
 
-      console.log(`演示用户登录成功: ${demoUser.username}`);
-      
-      return res.status(200).json({
-        id: demoUser.id,
-        username: demoUser.username,
-        role: demoUser.role,
-        firstName: demoUser.firstName,
-        lastName: demoUser.lastName,
-        email: demoUser.email,
-        department: demoUser.department,
-        position: demoUser.position
+        console.log(`演示用户登录成功: ${demoUser.username}`);
+        
+        return res.status(200).json({
+          id: demoUser.id,
+          username: demoUser.username,
+          role: demoUser.role,
+          firstName: demoUser.firstName,
+          lastName: demoUser.lastName,
+          email: demoUser.email,
+          department: demoUser.department,
+          position: demoUser.position
+        });
       });
     } catch (error) {
       console.error("演示登录失败:", error);
@@ -164,12 +160,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/me", async (req, res) => {
-    console.log("检查用户认证状态:", !!req.session.userId);
-    console.log("当前用户:", req.session.userId);
-    console.log("Passport认证状态:", req.isAuthenticated?.());
+    console.log("检查用户认证状态:", req.isAuthenticated?.());
     console.log("Passport用户:", req.user);
+    console.log("Session存在:", !!req.session);
     
-    // 优先检查SSO认证状态（Passport）
+    // 检查Passport认证状态
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
       const user = req.user as any;
       return res.status(200).json({
@@ -184,34 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ssoId: user.ssoId
       });
     }
-    
-    // 然后检查传统session认证
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "未授权" });
-    }
 
-    try {
-      const user = await storage.getUser(req.session.userId);
-      
-      if (!user) {
-        req.session.destroy(() => {});
-        return res.status(401).json({ message: "用户不存在" });
-      }
-
-      return res.status(200).json({
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        department: user.department,
-        position: user.position
-      });
-    } catch (error) {
-      console.error("Auth error:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+    return res.status(401).json({ message: "未授权" });
   });
 
   // Employee routes
@@ -247,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const employee = await storage.createEmployee(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("employee", employee.id, "create", req.session.userId, employee);
+      await storage.createAuditLog("employee", employee.id, "create", getCurrentUserId(req)!, employee);
       
       return res.status(201).json(employee);
     } catch (error) {
@@ -275,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit log
-      await storage.createAuditLog("employee", id, "update", req.session.userId, {
+      await storage.createAuditLog("employee", id, "update", getCurrentUserId(req)!, {
         previous: await storage.getEmployee(id),
         updated: validatedData
       });
@@ -304,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit log
-      await storage.createAuditLog("employee", id, "delete", req.session.userId, { id });
+      await storage.createAuditLog("employee", id, "delete", getCurrentUserId(req)!, { id });
       
       return res.status(204).send();
     } catch (error) {
@@ -346,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const structure = await storage.createSalaryStructure(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("salary_structure", structure.id, "create", req.session.userId, structure);
+      await storage.createAuditLog("salary_structure", structure.id, "create", getCurrentUserId(req)!, structure);
       
       return res.status(201).json(structure);
     } catch (error) {
@@ -374,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit log
-      await storage.createAuditLog("salary_structure", id, "update", req.session.userId, {
+      await storage.createAuditLog("salary_structure", id, "update", getCurrentUserId(req)!, {
         previous: await storage.getSalaryStructure(id),
         updated: validatedData
       });
@@ -422,7 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const component = await storage.createSalaryComponent(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("salary_component", component.id, "create", req.session.userId, component);
+      await storage.createAuditLog("salary_component", component.id, "create", getCurrentUserId(req)!, component);
       
       return res.status(201).json(component);
     } catch (error) {
@@ -460,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit log
-      await storage.createAuditLog("salary_component", id, "update", req.session.userId, {
+      await storage.createAuditLog("salary_component", id, "update", getCurrentUserId(req)!, {
         previous: await storage.getSalaryComponent(id),
         updated: validatedData
       });
@@ -497,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mapping = await storage.assignSalaryStructure(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("employee_salary_structure", mapping.id, "create", req.session.userId, mapping);
+      await storage.createAuditLog("employee_salary_structure", mapping.id, "create", getCurrentUserId(req)!, mapping);
       
       return res.status(201).json(mapping);
     } catch (error) {
@@ -530,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const period = await storage.createPayrollPeriod(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("payroll_period", period.id, "create", req.session.userId, period);
+      await storage.createAuditLog("payroll_period", period.id, "create", getCurrentUserId(req)!, period);
       
       return res.status(201).json(period);
     } catch (error) {
@@ -558,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit log
-      await storage.createAuditLog("payroll_period", id, "update", req.session.userId, {
+      await storage.createAuditLog("payroll_period", id, "update", getCurrentUserId(req)!, {
         previous: await storage.getPayrollPeriod(id),
         updated: validatedData
       });
@@ -725,7 +694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updatePayrollPeriod(periodId, { status: "processing", runDate: new Date() });
       
       // Create audit log
-      await storage.createAuditLog("payroll_process", periodId, "process", req.session.userId, {
+      await storage.createAuditLog("payroll_process", periodId, "process", getCurrentUserId(req)!, {
         periodId,
         entries: payrollEntries.length
       });
@@ -750,9 +719,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entries = await storage.getPayrollEntries(periodId, employeeId);
       
       // If employee is requesting their own payslips, add employee details
-      if (req.session.userRole === "employee" && !employeeId) {
+      const currentUserId = getCurrentUserId(req);
+      const currentUserRole = req.isAuthenticated?.() && req.user ? 
+        (req.user as any).role : req.session?.userRole;
+      
+      if (currentUserRole === "employee" && !employeeId && currentUserId) {
         // Get employee ID from user
-        const user = await storage.getUser(req.session.userId);
+        const user = await storage.getUser(currentUserId);
         if (user?.employeeId) {
           return res.status(200).json(
             entries.filter(entry => entry.employeeId === user.employeeId)
@@ -778,8 +751,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // If employee is requesting, check if it's their own payslip
-      if (req.session.userRole === "employee") {
-        const user = await storage.getUser(req.session.userId);
+      const currentUserId = getCurrentUserId(req);
+      const currentUserRole = req.isAuthenticated?.() && req.user ? 
+        (req.user as any).role : req.session?.userRole;
+      
+      if (currentUserRole === "employee" && currentUserId) {
+        const user = await storage.getUser(currentUserId);
         if (user?.employeeId !== entry.employeeId) {
           return res.status(403).json({ message: "Access denied" });
         }
@@ -814,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit log
-      await storage.createAuditLog("payroll_entry", id, "update", req.session.userId, {
+      await storage.createAuditLog("payroll_entry", id, "update", getCurrentUserId(req)!, {
         previous: await storage.getPayrollEntry(id),
         updated: validatedData
       });
@@ -850,7 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const benefit = await storage.createBenefit(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("benefit", benefit.id, "create", req.session.userId, benefit);
+      await storage.createAuditLog("benefit", benefit.id, "create", getCurrentUserId(req)!, benefit);
       
       return res.status(201).json(benefit);
     } catch (error) {
@@ -872,8 +849,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const employeeId = req.query.employeeId ? parseInt(req.query.employeeId as string) : undefined;
       
       // If employee is requesting their own benefits
-      if (req.session.userRole === "employee" && !employeeId) {
-        const user = await storage.getUser(req.session.userId);
+      const currentUserId = getCurrentUserId(req);
+      const currentUserRole = req.isAuthenticated?.() && req.user ? 
+        (req.user as any).role : req.session?.userRole;
+      
+      if (currentUserRole === "employee" && !employeeId && currentUserId) {
+        const user = await storage.getUser(currentUserId);
         if (user?.employeeId) {
           const benefits = await storage.getEmployeeBenefits(user.employeeId);
           return res.status(200).json(benefits);
@@ -894,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const benefit = await storage.enrollEmployeeBenefit(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("employee_benefit", benefit.id, "create", req.session.userId, benefit);
+      await storage.createAuditLog("employee_benefit", benefit.id, "create", getCurrentUserId(req)!, benefit);
       
       return res.status(201).json(benefit);
     } catch (error) {
@@ -927,7 +908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taxRate = await storage.createTaxRate(validatedData);
       
       // Create audit log
-      await storage.createAuditLog("tax_rate", taxRate.id, "create", req.session.userId, taxRate);
+      await storage.createAuditLog("tax_rate", taxRate.id, "create", getCurrentUserId(req)!, taxRate);
       
       return res.status(201).json(taxRate);
     } catch (error) {
