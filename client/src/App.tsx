@@ -1,17 +1,5 @@
 import { useState, useEffect } from "react";
-import { Route, Switch, useLocation } from "wouter";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast";
-import Dashboard from "@/pages/dashboard";
-import Benefits from "@/pages/benefits";
-import Employees from "@/pages/employees";
-import Payroll from "@/pages/payroll";
-import SalaryConfiguration from "@/pages/salary-configuration";
-import Settings from "@/pages/settings";
-import NotFound from "@/pages/not-found";
-import AuthPage from "@/pages/auth";
-import { TopNav } from "@/components/layout/topnav";
-import { Sidebar } from "@/components/layout/sidebar";
+import { Route, Switch } from "wouter";
 
 interface User {
   id: number;
@@ -20,10 +8,6 @@ interface User {
   firstName?: string;
   lastName?: string;
   email?: string;
-  department?: string;
-  position?: string;
-  avatarUrl?: string;
-  ssoId?: string; // SSO用户标识
 }
 
 async function apiRequest(method: string, path: string, data?: unknown) {
@@ -47,86 +31,22 @@ async function apiRequest(method: string, path: string, data?: unknown) {
   return response;
 }
 
-function Router() {
+function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  // 处理本地登录
-  async function handleLogin(username: string, password: string) {
-    try {
-      const res = await apiRequest('POST', '/api/auth/login', { username, password });
-      const userData = await res.json();
-      setUser(userData);
-      setLoading(false);
-      toast({
-        title: "登录成功",
-        description: `欢迎回来，${userData.username}！`,
-      });
-      return true;
-    } catch (error) {
-      console.error('Login failed', error);
-      toast({
-        title: "登录失败",
-        description: "用户名或密码无效",
-        variant: "destructive",
-      });
-      return false;
-    }
-  }
-
-  // 处理退出登录
-  async function handleLogout() {
-    try {
-      // 检查是否是SSO用户
-      if (user?.ssoId) {
-        // SSO用户使用SSO退出
-        window.location.href = '/api/sso/logout';
-      } else {
-        // 本地用户使用普通退出
-        await apiRequest('GET', '/api/auth/logout');
-        setUser(null);
-        toast({
-          title: "退出成功",
-          description: "您已成功退出登录",
-        });
-      }
-    } catch (error) {
-      console.error('Logout failed', error);
-      toast({
-        title: "退出失败",
-        description: "退出登录时发生错误",
-        variant: "destructive",
-      });
-    }
-  }
 
   // 检查用户认证状态
   useEffect(() => {
     async function checkAuth() {
-      console.log('正在检查认证状态...');
+      console.log('检查认证状态...');
       try {
         const res = await apiRequest('GET', '/api/auth/me');
         const userData = await res.json();
         console.log('用户已认证:', userData);
         setUser(userData);
-        setLoading(false);
       } catch (error) {
-        console.log('用户未认证，显示登录界面');
-        
-        // 检查是否有SSO回调参数
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('token') || urlParams.get('userId')) {
-          console.log('检测到SSO回调，等待处理...');
-          // 设置一个超时，防止无限等待
-          setTimeout(() => {
-            console.log('SSO回调超时，显示登录页面');
-            setLoading(false);
-          }, 5000);
-          return;
-        }
-        
-        console.log('显示登录页面');
+        console.log('用户未认证');
+      } finally {
         setLoading(false);
       }
     }
@@ -136,9 +56,9 @@ function Router() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-lg text-gray-600">正在加载...</div>
         </div>
       </div>
@@ -146,35 +66,62 @@ function Router() {
   }
 
   if (!user) {
-    return <AuthPage onLogin={handleLogin} />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <h2 className="text-2xl font-bold text-center mb-6">登录</h2>
+          <div className="space-y-4">
+            <button
+              onClick={() => window.location.href = '/api/sso/login'}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+            >
+              使用SSO登录
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar user={user} onLogout={handleLogout} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopNav onMobileMenuToggle={() => {}} user={user} onLogout={handleLogout} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/employees" component={Employees} />
-            <Route path="/payroll" component={Payroll} />
-            <Route path="/benefits" component={Benefits} />
-            <Route path="/salary-configuration" component={SalaryConfiguration} />
-            <Route path="/settings" component={Settings} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
-      </div>
-    </div>
-  );
-}
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold">薪资管理系统</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-gray-700">欢迎, {user.firstName || user.username}</span>
+              <button
+                onClick={() => window.location.href = user.ssoId ? '/api/sso/logout' : '/api/auth/logout'}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              >
+                退出
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
 
-function App() {
-  return (
-    <Toaster>
-      <Router />
-    </Toaster>
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <Switch>
+          <Route path="/">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-2xl font-bold mb-4">仪表板</h2>
+              <p>欢迎使用薪资管理系统！</p>
+              <p>用户: {user.username} ({user.role})</p>
+            </div>
+          </Route>
+          <Route>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-2xl font-bold mb-4">页面未找到</h2>
+              <p>请检查URL是否正确。</p>
+            </div>
+          </Route>
+        </Switch>
+      </main>
+    </div>
   );
 }
 
