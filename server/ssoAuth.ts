@@ -3,9 +3,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import type { Express, Request, Response, NextFunction } from "express";
 import ConnectPgSimple from "connect-pg-simple";
-import { pool } from "./db";
+import { pool, db } from "./db";
 import { eq } from "drizzle-orm";
-import { db } from "./db";
 import { users } from "@shared/schema";
 import axios from "axios";
 

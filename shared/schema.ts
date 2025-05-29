@@ -123,14 +123,31 @@ export const auditLogs = pgTable("audit_logs", {
   changeDetails: jsonb("change_details").notNull(),
 });
 
-// Users table
+// 用户表定义
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  employeeId: integer("employee_id").references(() => employees.id),
-  role: text("role").notNull(), // admin, payroll_manager, employee
-  status: text("status").notNull().default("active"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email"),
+  password: text("password"), // 本地用户密码（可选）
+  role: text("role").notNull().default("employee"), // admin, manager, employee
+  department: text("department"),
+  position: text("position"),
+  avatarUrl: text("avatar_url"),
+  ssoId: text("sso_id").unique(), // SSO用户的唯一标识
+  tenantId: integer("tenant_id").default(1),
+  isActive: boolean("is_active").default(true),
+  lastLogin: timestamp("last_login"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// 会话表定义（用于express-session存储）
+export const sessions = pgTable("sessions", {
+  sid: text("sid").primaryKey(),
+  sess: text("sess").notNull(),
+  expire: timestamp("expire").notNull(),
 });
 
 // Insert schemas
@@ -177,8 +194,9 @@ export type InsertEmployeeBenefit = z.infer<typeof insertEmployeeBenefitSchema>;
 export type TaxRate = typeof taxRates.$inferSelect;
 export type InsertTaxRate = z.infer<typeof insertTaxRateSchema>;
 
+// 导出类型
 export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type NewUser = typeof users.$inferInsert;
 
 // Extended schemas with additional validation for forms
 export const extendedEmployeeSchema = insertEmployeeSchema.extend({
