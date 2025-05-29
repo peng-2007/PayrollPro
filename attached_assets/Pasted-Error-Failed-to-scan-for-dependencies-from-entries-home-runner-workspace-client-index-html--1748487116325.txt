@@ -1,0 +1,62 @@
+Error:   Failed to scan for dependencies from entries:
+  /home/runner/workspace/client/index.html
+
+  ✘ [ERROR] No matching export in "src/pages/dashboard.tsx" for import "Dashboard"
+
+    src/App.tsx:7:9:
+      7 │ import { Dashboard } from "./pages/dashboard";
+        ╵          ~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "src/pages/employees.tsx" for import "Employees"
+
+    src/App.tsx:8:9:
+      8 │ import { Employees } from "./pages/employees";
+        ╵          ~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "src/pages/payroll.tsx" for import "Payroll"
+
+    src/App.tsx:9:9:
+      9 │ import { Payroll } from "./pages/payroll";
+        ╵          ~~~~~~~
+
+
+✘ [ERROR] No matching export in "src/pages/salary-configuration.tsx" for import "SalaryConfiguration"
+
+    src/App.tsx:10:9:
+      10 │ import { SalaryConfiguration } from "./pages/salary-configuration";
+         ╵          ~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "src/pages/benefits.tsx" for import "Benefits"
+
+    src/App.tsx:11:9:
+      11 │ import { Benefits } from "./pages/benefits";
+         ╵          ~~~~~~~~
+
+
+✘ [ERROR] No matching export in "src/pages/settings.tsx" for import "Settings"
+
+    src/App.tsx:12:9:
+      12 │ import { Settings } from "./pages/settings";
+         ╵          ~~~~~~~~
+
+
+✘ [ERROR] No matching export in "src/pages/not-found.tsx" for import "NotFound"
+
+    src/App.tsx:13:9:
+      13 │ import { NotFound } from "./pages/not-found";
+         ╵          ~~~~~~~~
+
+
+    at failureErrorWithLog (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:943:7)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)

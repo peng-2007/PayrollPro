@@ -417,7 +417,7 @@ export async function setupSSO(app: Express) {
                         console.error("登录错误:", err);
                         return res.redirect("/auth?error=session_error");
                     }
-                    
+
                     console.log("用户登录成功:", safeUser.username);
                     console.log("Passport用户数据:", req.user);
                     console.log("认证状态:", req.isAuthenticated());
@@ -484,30 +484,30 @@ export async function setupSSO(app: Express) {
     });
 
     // 获取当前用户信息路由
-    app.get("/api/auth/me", (req, res) => {
-        console.log("检查用户认证状态:", req.isAuthenticated());
-        console.log("当前用户:", req.user);
+    // app.get("/api/auth/me", (req, res) => {
+    //     console.log("检查用户认证状态:", req.isAuthenticated());
+    //     console.log("当前用户:", req.user);
 
-        if (!req.isAuthenticated() || !req.user) {
-            return res.status(401).json({ message: "未授权" });
-        }
+    //     if (!req.isAuthenticated() || !req.user) {
+    //         return res.status(401).json({ message: "未授权" });
+    //     }
 
-        const user = req.user as any;
-        const safeUser = {
-            id: user.id,
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            role: user.role,
-            department: user.department,
-            position: user.position,
-            avatarUrl: user.avatarUrl,
-            ssoId: user.ssoId, // 包含ssoId以区分SSO用户和本地用户
-        };
+    //     const user = req.user as any;
+    //     const safeUser = {
+    //         id: user.id,
+    //         username: user.username,
+    //         firstName: user.firstName,
+    //         lastName: user.lastName,
+    //         email: user.email,
+    //         role: user.role,
+    //         department: user.department,
+    //         position: user.position,
+    //         avatarUrl: user.avatarUrl,
+    //         ssoId: user.ssoId, // 包含ssoId以区分SSO用户和本地用户
+    //     };
 
-        res.json(safeUser);
-    });
+    //     res.json(safeUser);
+    // });
 
     // 演示登录路由
     app.post("/api/auth/demo-login", async (req, res) => {
@@ -535,7 +535,7 @@ export async function setupSSO(app: Express) {
                 }
 
                 console.log("演示用户登录成功:", demoUser.username);
-                
+
                 return res.json({
                     id: demoUser.id,
                     username: demoUser.username,
