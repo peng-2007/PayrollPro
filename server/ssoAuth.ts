@@ -412,22 +412,15 @@ export async function setupSSO(app: Express) {
                     ssoId: user.ssoId, // 标识这是SSO用户
                 };
 
-                // 手动设置会话，兼容普通路由的会话格式
-                req.session.userId = safeUser.id;
-                req.session.username = safeUser.username;
-                req.session.userRole = safeUser.role;
-
                 req.login(safeUser, (err) => {
                     if (err) {
                         console.error("登录错误:", err);
                         return res.redirect("/auth?error=session_error");
                     }
+                    
                     console.log("用户登录成功:", safeUser.username);
-                    console.log("会话数据:", {
-                        userId: req.session.userId,
-                        username: req.session.username,
-                        userRole: req.session.userRole
-                    });
+                    console.log("Passport用户数据:", req.user);
+                    console.log("认证状态:", req.isAuthenticated());
 
                     // 确保会话保存后再重定向
                     req.session.save((saveErr) => {
@@ -437,7 +430,7 @@ export async function setupSSO(app: Express) {
                                 "/auth?error=session_save_error",
                             );
                         }
-                        console.log("会话保存成功，重定向到dashboard");
+                        console.log("会话保存成功，重定向到根路径");
 
                         // 登录成功后直接重定向到根路径
                         return res.redirect(`/`);
@@ -514,6 +507,51 @@ export async function setupSSO(app: Express) {
         };
 
         res.json(safeUser);
+    });
+
+    // 演示登录路由
+    app.post("/api/auth/demo-login", async (req, res) => {
+        try {
+            // 查找演示管理员账户
+            const [demoUser] = await db
+                .select()
+                .from(users)
+                .where(eq(users.username, "demo_admin"));
+
+            if (!demoUser) {
+                return res.status(404).json({ message: "演示账户不存在" });
+            }
+
+            // 更新最后登录时间
+            await db
+                .update(users)
+                .set({ lastLogin: new Date() })
+                .where(eq(users.id, demoUser.id));
+
+            req.login(demoUser, (err) => {
+                if (err) {
+                    console.error("演示登录错误:", err);
+                    return res.status(500).json({ message: "登录失败" });
+                }
+
+                console.log("演示用户登录成功:", demoUser.username);
+                
+                return res.json({
+                    id: demoUser.id,
+                    username: demoUser.username,
+                    firstName: demoUser.firstName,
+                    lastName: demoUser.lastName,
+                    email: demoUser.email,
+                    role: demoUser.role,
+                    department: demoUser.department,
+                    position: demoUser.position,
+                    avatarUrl: demoUser.avatarUrl,
+                });
+            });
+        } catch (error) {
+            console.error("演示登录错误:", error);
+            res.status(500).json({ message: "服务器错误" });
+        }
     });
 
     // 普通登出路由

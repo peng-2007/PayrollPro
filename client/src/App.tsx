@@ -1,7 +1,16 @@
 
 import { useState, useEffect } from "react";
 import { Route, Switch } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "./components/ui/toaster";
 import { AuthPage } from "./pages/auth";
+import { Dashboard } from "./pages/dashboard";
+import { Employees } from "./pages/employees";
+import { Payroll } from "./pages/payroll";
+import { SalaryConfiguration } from "./pages/salary-configuration";
+import { Benefits } from "./pages/benefits";
+import { Settings } from "./pages/settings";
+import { NotFound } from "./pages/not-found";
 
 interface User {
   id: number;
@@ -33,6 +42,8 @@ async function apiRequest(method: string, path: string, data?: unknown) {
 
   return response;
 }
+
+const queryClient = new QueryClient();
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -93,45 +104,72 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold">薪资管理系统</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">欢迎, {user.firstName || user.username}</span>
-              <button
-                onClick={() => window.location.href = user.ssoId ? '/api/sso/logout' : '/api/auth/logout'}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-              >
-                退出
-              </button>
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen bg-gray-50">
+        <nav className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <h1 className="text-xl font-bold text-gray-900">薪资管理系统</h1>
+                </div>
+                <div className="hidden md:block">
+                  <div className="ml-10 flex items-baseline space-x-4">
+                    <a href="/" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                      仪表板
+                    </a>
+                    <a href="/employees" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                      员工管理
+                    </a>
+                    <a href="/salary-configuration" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                      薪资配置
+                    </a>
+                    <a href="/payroll" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                      工资单
+                    </a>
+                    <a href="/benefits" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                      福利管理
+                    </a>
+                    {(user.role === 'admin' || user.role === 'manager') && (
+                      <a href="/settings" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        系统设置
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700">
+                  欢迎, {user.firstName || user.username} 
+                  <span className="text-sm text-gray-500 ml-1">({user.role})</span>
+                </span>
+                <button
+                  onClick={() => window.location.href = user.ssoId ? '/api/sso/logout' : '/api/auth/logout'}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  退出
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <Switch>
-          <Route path="/">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-2xl font-bold mb-4">仪表板</h2>
-              <p>欢迎使用薪资管理系统！</p>
-              <p>用户: {user.username} ({user.role})</p>
-              {user.ssoId && <p>SSO用户 ID: {user.ssoId}</p>}
-            </div>
-          </Route>
-          <Route>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-2xl font-bold mb-4">页面未找到</h2>
-              <p>请检查URL是否正确。</p>
-            </div>
-          </Route>
-        </Switch>
-      </main>
-    </div>
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/employees" component={Employees} />
+            <Route path="/salary-configuration" component={SalaryConfiguration} />
+            <Route path="/payroll" component={Payroll} />
+            <Route path="/benefits" component={Benefits} />
+            {(user.role === 'admin' || user.role === 'manager') && (
+              <Route path="/settings" component={Settings} />
+            )}
+            <Route component={NotFound} />
+          </Switch>
+        </main>
+      </div>
+      <Toaster />
+    </QueryClientProvider>
   );
 }
 
