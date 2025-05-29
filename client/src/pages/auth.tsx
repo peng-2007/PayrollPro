@@ -12,9 +12,10 @@ import { useToast } from '../hooks/use-toast';
 
 interface AuthPageProps {
   onLogin: (username: string, password: string) => Promise<boolean>;
+  onDemoLogin: () => Promise<boolean>;
 }
 
-export function AuthPage({ onLogin }: AuthPageProps) {
+export function AuthPage({ onLogin, onDemoLogin }: AuthPageProps) {
   const [, setLocation] = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -93,15 +94,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/demo-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      if (response.ok) {
+      const success = await onDemoLogin();
+      if (success) {
         toast({
           title: "登录成功",
           description: "已使用演示账户登录",

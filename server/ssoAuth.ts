@@ -432,8 +432,8 @@ export async function setupSSO(app: Express) {
                         }
                         console.log("会话保存成功，重定向到根路径");
 
-                        // 登录成功后直接重定向到根路径
-                        return res.redirect(`/`);
+                        // 添加一个SSO标识参数，前端可以识别这是SSO登录
+                        return res.redirect(`/?sso=success`);
                     });
                 });
             } catch (err) {

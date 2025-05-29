@@ -53,11 +53,26 @@ function App() {
   useEffect(() => {
     async function checkAuth() {
       console.log('检查认证状态...');
+      
+      // 检查URL是否是从SSO回调跳转过来的
+      const urlParams = new URLSearchParams(window.location.search);
+      const fromSSO = window.location.pathname === '/' && document.referrer.includes('/api/sso/callback');
+      
+      // 如果是从SSO跳转过来的，延迟一下再检查认证状态，等待会话建立
+      if (fromSSO) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
       try {
         const res = await apiRequest('GET', '/api/auth/me');
         const userData = await res.json();
         console.log('用户已认证:', userData);
         setUser(userData);
+        
+        // 清理URL参数
+        if (urlParams.toString()) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       } catch (error) {
         console.log('用户未认证');
       } finally {
@@ -88,6 +103,23 @@ function App() {
     }
   };
 
+  // 处理演示登录
+  const handleDemoLogin = async (): Promise<boolean> => {
+    try {
+      const response = await apiRequest('POST', '/api/auth/demo-login');
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('演示登录失败:', error);
+      return false;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -100,7 +132,7 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage onLogin={handleLogin} />;
+    return <AuthPage onLogin={handleLogin} onDemoLogin={handleDemoLogin} />;
   }
 
   return (
