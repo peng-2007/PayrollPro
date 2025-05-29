@@ -1,0 +1,77 @@
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.14  ready in 211 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://172.31.128.76:3000/
+Error:   Failed to scan for dependencies from entries:
+  /home/runner/workspace/client/index.html
+
+  ✘ [ERROR] The symbol "Button" has already been declared
+
+    src/components/ui/button.tsx:66:6:
+      66 │ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+         ╵       ~~~~~~
+
+  The symbol "Button" was originally declared here:
+
+    src/components/ui/button.tsx:42:6:
+      42 │ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+         ╵       ~~~~~~
+
+
+✘ [ERROR] Multiple exports with the same name "Button"
+
+    src/components/ui/button.tsx:96:9:
+      96 │ export { Button }
+         ╵          ~~~~~~
+
+  The name "Button" was originally exported here:
+
+    src/components/ui/button.tsx:56:9:
+      56 │ export { Button, buttonVariants }
+         ╵          ~~~~~~
+
+
+✘ [ERROR] Multiple exports with the same name "cn"
+
+    src/lib/utils.ts:10:16:
+      10 │ export function cn(...inputs: ClassValue[]) {
+         ╵                 ~~
+
+  The name "cn" was originally exported here:
+
+    src/lib/utils.ts:4:16:
+      4 │ export function cn(...inputs: ClassValue[]) {
+        ╵                 ~~
+
+
+✘ [ERROR] The symbol "cn" has already been declared
+
+    src/lib/utils.ts:10:16:
+      10 │ export function cn(...inputs: ClassValue[]) {
+         ╵                 ~~
+
+  The symbol "cn" was originally declared here:
+
+    src/lib/utils.ts:4:16:
+      4 │ export function cn(...inputs: ClassValue[]) {
+        ╵                 ~~
+
+  Duplicate top-level function declarations are not allowed in an ECMAScript module. This file is considered to be an ECMAScript module because of the "export" keyword here:
+
+    src/lib/utils.ts:10:0:
+      10 │ export function cn(...inputs: ClassValue[]) {
+         ╵ ~~~~~~
+
+
+    at failureErrorWithLog (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:943:7)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)
