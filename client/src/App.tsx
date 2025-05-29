@@ -112,34 +112,22 @@ function Router() {
         setUser(userData);
         setLoading(false);
       } catch (error) {
-        console.log('用户未认证，尝试演示登录...');
+        console.log('用户未认证，显示登录界面');
         
-        // 尝试自动演示登录
-        try {
-          const demoRes = await apiRequest('POST', '/api/auth/demo-login');
-          const demoUserData = await demoRes.json();
-          console.log('演示登录成功:', demoUserData);
-          setUser(demoUserData);
-          toast({
-            title: "欢迎使用薪酬管理系统",
-            description: `您已以演示管理员身份登录：${demoUserData.firstName}${demoUserData.lastName}`,
-          });
-          setLoading(false);
-        } catch (demoError) {
-          console.error('演示登录失败:', demoError);
-          // 检查是否有SSO回调参数
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('token') || urlParams.get('userId')) {
-            console.log('检测到SSO回调，等待重定向...');
-            setTimeout(() => {
-              console.log('SSO回调超时，显示登录页面');
-              setLoading(false);
-            }, 5000);
-            return;
-          }
-          console.log('显示认证页面');
-          setLoading(false);
+        // 检查是否有SSO回调参数
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('token') || urlParams.get('userId')) {
+          console.log('检测到SSO回调，等待处理...');
+          // 设置一个超时，防止无限等待
+          setTimeout(() => {
+            console.log('SSO回调超时，显示登录页面');
+            setLoading(false);
+          }, 5000);
+          return;
         }
+        
+        console.log('显示登录页面');
+        setLoading(false);
       }
     }
 
