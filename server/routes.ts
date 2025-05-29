@@ -49,6 +49,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Authentication middleware
   const authenticate = (req: Request, res: Response, next: Function) => {
+    // 优先检查SSO认证状态（Passport）
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      return next();
+    }
+    
+    // 然后检查传统session认证
     if (!req.session.userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -57,7 +63,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Role-based access control middleware
   const authorize = (roles: string[]) => (req: Request, res: Response, next: Function) => {
-    if (!req.session.userRole || !roles.includes(req.session.userRole)) {
+    let userRole: string | undefined;
+    
+    // 优先检查SSO用户角色
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userRole = (req.user as any).role;
+    } else if (req.session.userRole) {
+      // 检查传统session用户角色
+      userRole = req.session.userRole;
+    }
+    
+    if (!userRole || !roles.includes(userRole)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
@@ -150,7 +166,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", async (req, res) => {
     console.log("检查用户认证状态:", !!req.session.userId);
     console.log("当前用户:", req.session.userId);
+    console.log("Passport认证状态:", req.isAuthenticated?.());
+    console.log("Passport用户:", req.user);
     
+    // 优先检查SSO认证状态（Passport）
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      const user = req.user as any;
+      return res.status(200).json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        department: user.department,
+        position: user.position,
+        ssoId: user.ssoId
+      });
+    }
+    
+    // 然后检查传统session认证
     if (!req.session.userId) {
       return res.status(401).json({ message: "未授权" });
     }
