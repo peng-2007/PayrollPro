@@ -4,13 +4,13 @@ import { Route, Switch } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "./components/ui/toaster";
 import { AuthPage } from "./pages/auth";
-import { Dashboard } from "./pages/dashboard";
-import { Employees } from "./pages/employees";
-import { Payroll } from "./pages/payroll";
-import { SalaryConfiguration } from "./pages/salary-configuration";
-import { Benefits } from "./pages/benefits";
-import { Settings } from "./pages/settings";
-import { NotFound } from "./pages/not-found";
+import Dashboard from "./pages/dashboard";
+import Employees from "./pages/employees";
+import Payroll from "./pages/payroll";
+import SalaryConfiguration from "./pages/salary-configuration";
+import Benefits from "./pages/benefits";
+import Settings from "./pages/settings";
+import NotFound from "./pages/not-found";
 
 interface User {
   id: number;
