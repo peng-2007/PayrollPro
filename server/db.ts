@@ -1,22 +1,15 @@
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from "ws";
+import * as schema from "@shared/schema";
 
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { users } from "@shared/schema";
+neonConfig.webSocketConstructor = ws;
 
-// 数据库连接配置
-const connectionString = process.env.DATABASE_URL || "postgresql://username:password@localhost:5432/lms_db";
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
 
-// 创建PostgreSQL连接池
-export const pool = postgres(connectionString, {
-  max: 10, // 最大连接数
-  idle_timeout: 20, // 空闲超时时间（秒）
-  connect_timeout: 10, // 连接超时时间（秒）
-});
-
-// 创建Drizzle数据库实例
-export const db = drizzle(pool, {
-  schema: { users },
-});
-
-// 导出类型
-export type Database = typeof db;
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle({ client: pool, schema });

@@ -9,9 +9,15 @@ import {
   benefits, type Benefit, type InsertBenefit,
   employeeBenefits, type EmployeeBenefit, type InsertEmployeeBenefit,
   taxRates, type TaxRate, type InsertTaxRate,
-  users, type User, type InsertUser,
+  users, type User, type NewUser as InsertUser,
   auditLogs
 } from "@shared/schema";
+import { db, pool } from "./db";
+import { eq } from "drizzle-orm";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Employee methods
@@ -85,6 +91,9 @@ export interface IStorage {
   
   // Audit logs
   createAuditLog(entityType: string, entityId: number, action: string, changedBy: number, changeDetails: any): Promise<void>;
+  
+  // Session store
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
@@ -648,4 +657,351 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
+  async getEmployees(): Promise<Employee[]> {
+    return await db.select().from(employees);
+  }
+
+  async getEmployee(id: number): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+    return employee || undefined;
+  }
+
+  async createEmployee(employee: InsertEmployee): Promise<Employee> {
+    const [newEmployee] = await db
+      .insert(employees)
+      .values(employee)
+      .returning();
+    return newEmployee;
+  }
+
+  async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee | undefined> {
+    const [updatedEmployee] = await db
+      .update(employees)
+      .set(employee)
+      .where(eq(employees.id, id))
+      .returning();
+    return updatedEmployee || undefined;
+  }
+
+  async deleteEmployee(id: number): Promise<boolean> {
+    const result = await db.delete(employees).where(eq(employees.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getSalaryStructures(): Promise<SalaryStructure[]> {
+    return await db.select().from(salaryStructures);
+  }
+
+  async getSalaryStructure(id: number): Promise<SalaryStructure | undefined> {
+    const [structure] = await db.select().from(salaryStructures).where(eq(salaryStructures.id, id));
+    return structure || undefined;
+  }
+
+  async createSalaryStructure(structure: InsertSalaryStructure): Promise<SalaryStructure> {
+    const [newStructure] = await db
+      .insert(salaryStructures)
+      .values(structure)
+      .returning();
+    return newStructure;
+  }
+
+  async updateSalaryStructure(id: number, structure: Partial<InsertSalaryStructure>): Promise<SalaryStructure | undefined> {
+    const [updatedStructure] = await db
+      .update(salaryStructures)
+      .set(structure)
+      .where(eq(salaryStructures.id, id))
+      .returning();
+    return updatedStructure || undefined;
+  }
+
+  async deleteSalaryStructure(id: number): Promise<boolean> {
+    const result = await db.delete(salaryStructures).where(eq(salaryStructures.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getSalaryComponents(structureId?: number): Promise<SalaryComponent[]> {
+    if (structureId) {
+      return await db.select().from(salaryComponents).where(eq(salaryComponents.structureId, structureId));
+    }
+    return await db.select().from(salaryComponents);
+  }
+
+  async getSalaryComponent(id: number): Promise<SalaryComponent | undefined> {
+    const [component] = await db.select().from(salaryComponents).where(eq(salaryComponents.id, id));
+    return component || undefined;
+  }
+
+  async createSalaryComponent(component: InsertSalaryComponent): Promise<SalaryComponent> {
+    const [newComponent] = await db
+      .insert(salaryComponents)
+      .values(component)
+      .returning();
+    return newComponent;
+  }
+
+  async updateSalaryComponent(id: number, component: Partial<InsertSalaryComponent>): Promise<SalaryComponent | undefined> {
+    const [updatedComponent] = await db
+      .update(salaryComponents)
+      .set(component)
+      .where(eq(salaryComponents.id, id))
+      .returning();
+    return updatedComponent || undefined;
+  }
+
+  async deleteSalaryComponent(id: number): Promise<boolean> {
+    const result = await db.delete(salaryComponents).where(eq(salaryComponents.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getEmployeeSalaryStructures(employeeId?: number): Promise<EmployeeSalaryStructure[]> {
+    if (employeeId) {
+      return await db.select().from(employeeSalaryStructures).where(eq(employeeSalaryStructures.employeeId, employeeId));
+    }
+    return await db.select().from(employeeSalaryStructures);
+  }
+
+  async assignSalaryStructure(mapping: InsertEmployeeSalaryStructure): Promise<EmployeeSalaryStructure> {
+    const [newMapping] = await db
+      .insert(employeeSalaryStructures)
+      .values(mapping)
+      .returning();
+    return newMapping;
+  }
+
+  async updateEmployeeSalaryStructure(id: number, mapping: Partial<InsertEmployeeSalaryStructure>): Promise<EmployeeSalaryStructure | undefined> {
+    const [updatedMapping] = await db
+      .update(employeeSalaryStructures)
+      .set(mapping)
+      .where(eq(employeeSalaryStructures.id, id))
+      .returning();
+    return updatedMapping || undefined;
+  }
+
+  async getEmployeeComponentOverrides(employeeId: number): Promise<EmployeeComponentOverride[]> {
+    return await db.select().from(employeeComponentOverrides).where(eq(employeeComponentOverrides.employeeId, employeeId));
+  }
+
+  async setComponentOverride(override: InsertEmployeeComponentOverride): Promise<EmployeeComponentOverride> {
+    const [newOverride] = await db
+      .insert(employeeComponentOverrides)
+      .values(override)
+      .returning();
+    return newOverride;
+  }
+
+  async updateComponentOverride(id: number, override: Partial<InsertEmployeeComponentOverride>): Promise<EmployeeComponentOverride | undefined> {
+    const [updatedOverride] = await db
+      .update(employeeComponentOverrides)
+      .set(override)
+      .where(eq(employeeComponentOverrides.id, id))
+      .returning();
+    return updatedOverride || undefined;
+  }
+
+  async deleteComponentOverride(id: number): Promise<boolean> {
+    const result = await db.delete(employeeComponentOverrides).where(eq(employeeComponentOverrides.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getPayrollPeriods(): Promise<PayrollPeriod[]> {
+    return await db.select().from(payrollPeriods);
+  }
+
+  async getPayrollPeriod(id: number): Promise<PayrollPeriod | undefined> {
+    const [period] = await db.select().from(payrollPeriods).where(eq(payrollPeriods.id, id));
+    return period || undefined;
+  }
+
+  async createPayrollPeriod(period: InsertPayrollPeriod): Promise<PayrollPeriod> {
+    const [newPeriod] = await db
+      .insert(payrollPeriods)
+      .values(period)
+      .returning();
+    return newPeriod;
+  }
+
+  async updatePayrollPeriod(id: number, period: Partial<InsertPayrollPeriod>): Promise<PayrollPeriod | undefined> {
+    const [updatedPeriod] = await db
+      .update(payrollPeriods)
+      .set(period)
+      .where(eq(payrollPeriods.id, id))
+      .returning();
+    return updatedPeriod || undefined;
+  }
+
+  async getPayrollEntries(periodId?: number, employeeId?: number): Promise<PayrollEntry[]> {
+    let query = db.select().from(payrollEntries);
+    
+    if (periodId && employeeId) {
+      return await query.where(eq(payrollEntries.periodId, periodId) && eq(payrollEntries.employeeId, employeeId));
+    } else if (periodId) {
+      return await query.where(eq(payrollEntries.periodId, periodId));
+    } else if (employeeId) {
+      return await query.where(eq(payrollEntries.employeeId, employeeId));
+    }
+    
+    return await query;
+  }
+
+  async getPayrollEntry(id: number): Promise<PayrollEntry | undefined> {
+    const [entry] = await db.select().from(payrollEntries).where(eq(payrollEntries.id, id));
+    return entry || undefined;
+  }
+
+  async createPayrollEntry(entry: InsertPayrollEntry): Promise<PayrollEntry> {
+    const [newEntry] = await db
+      .insert(payrollEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  async updatePayrollEntry(id: number, entry: Partial<InsertPayrollEntry>): Promise<PayrollEntry | undefined> {
+    const [updatedEntry] = await db
+      .update(payrollEntries)
+      .set(entry)
+      .where(eq(payrollEntries.id, id))
+      .returning();
+    return updatedEntry || undefined;
+  }
+
+  async getBenefits(): Promise<Benefit[]> {
+    return await db.select().from(benefits);
+  }
+
+  async getBenefit(id: number): Promise<Benefit | undefined> {
+    const [benefit] = await db.select().from(benefits).where(eq(benefits.id, id));
+    return benefit || undefined;
+  }
+
+  async createBenefit(benefit: InsertBenefit): Promise<Benefit> {
+    const [newBenefit] = await db
+      .insert(benefits)
+      .values(benefit)
+      .returning();
+    return newBenefit;
+  }
+
+  async updateBenefit(id: number, benefit: Partial<InsertBenefit>): Promise<Benefit | undefined> {
+    const [updatedBenefit] = await db
+      .update(benefits)
+      .set(benefit)
+      .where(eq(benefits.id, id))
+      .returning();
+    return updatedBenefit || undefined;
+  }
+
+  async deleteBenefit(id: number): Promise<boolean> {
+    const result = await db.delete(benefits).where(eq(benefits.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getEmployeeBenefits(employeeId?: number): Promise<EmployeeBenefit[]> {
+    if (employeeId) {
+      return await db.select().from(employeeBenefits).where(eq(employeeBenefits.employeeId, employeeId));
+    }
+    return await db.select().from(employeeBenefits);
+  }
+
+  async enrollEmployeeBenefit(enrollment: InsertEmployeeBenefit): Promise<EmployeeBenefit> {
+    const [newEnrollment] = await db
+      .insert(employeeBenefits)
+      .values(enrollment)
+      .returning();
+    return newEnrollment;
+  }
+
+  async updateEmployeeBenefit(id: number, enrollment: Partial<InsertEmployeeBenefit>): Promise<EmployeeBenefit | undefined> {
+    const [updatedEnrollment] = await db
+      .update(employeeBenefits)
+      .set(enrollment)
+      .where(eq(employeeBenefits.id, id))
+      .returning();
+    return updatedEnrollment || undefined;
+  }
+
+  async terminateEmployeeBenefit(id: number, endDate: Date): Promise<EmployeeBenefit | undefined> {
+    const [updatedEnrollment] = await db
+      .update(employeeBenefits)
+      .set({ endDate: endDate.toISOString() })
+      .where(eq(employeeBenefits.id, id))
+      .returning();
+    return updatedEnrollment || undefined;
+  }
+
+  async getTaxRates(): Promise<TaxRate[]> {
+    return await db.select().from(taxRates);
+  }
+
+  async createTaxRate(taxRate: InsertTaxRate): Promise<TaxRate> {
+    const [newTaxRate] = await db
+      .insert(taxRates)
+      .values(taxRate)
+      .returning();
+    return newTaxRate;
+  }
+
+  async updateTaxRate(id: number, taxRate: Partial<InsertTaxRate>): Promise<TaxRate | undefined> {
+    const [updatedTaxRate] = await db
+      .update(taxRates)
+      .set(taxRate)
+      .where(eq(taxRates.id, id))
+      .returning();
+    return updatedTaxRate || undefined;
+  }
+
+  async getUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db
+      .insert(users)
+      .values(user)
+      .returning();
+    return newUser;
+  }
+
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(user)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser || undefined;
+  }
+
+  async createAuditLog(entityType: string, entityId: number, action: string, changedBy: number, changeDetails: any): Promise<void> {
+    await db
+      .insert(auditLogs)
+      .values({
+        entityType,
+        entityId,
+        action,
+        changedBy,
+        changeDetails
+      });
+  }
+}
+
+export const storage = new DatabaseStorage();
