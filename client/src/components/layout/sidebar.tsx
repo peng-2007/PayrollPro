@@ -164,7 +164,6 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
             </div>
           )}
         </div>
-      </div>
     </aside>
   );
 }
