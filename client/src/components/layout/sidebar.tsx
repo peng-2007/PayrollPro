@@ -1,14 +1,22 @@
 import React from 'react';
 import { useLocation, Link } from 'wouter';
+import { Button } from '../ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Separator } from '../ui/separator';
 
 interface User {
   id: number;
   username: string;
   role: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  avatarUrl?: string;
+  ssoId?: string;
 }
 
 interface SidebarProps {
-  user: User;
+  user?: User;
   onLogout: () => void;
 }
 
@@ -75,7 +83,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         <div className="px-4 mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
           Main
         </div>
-        
+
         {navItems.map((item) => (
           <Link 
             key={item.path} 
@@ -91,11 +99,11 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
             </a>
           </Link>
         ))}
-        
+
         <div className="px-4 mt-6 mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
           Administration
         </div>
-        
+
         {adminNavItems.map((item) => (
           <Link 
             key={item.path} 
@@ -113,27 +121,49 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-neutral-200">
-        <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium">
-            {user.username.substring(0, 2).toUpperCase()}
-          </div>
-          <div className="ml-3">
-            <p className="text-sm font-medium">{user.username}</p>
-            <p className="text-xs text-neutral-500">{user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
-          </div>
+        {/* 用户信息和退出按钮 */}
+        <div className="mt-auto p-4 border-t border-neutral-200">
+          {user && (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.avatarUrl} alt={user.username} />
+                  <AvatarFallback className="text-xs">
+                    {user.firstName && user.lastName 
+                      ? `${user.firstName[0]}${user.lastName[0]}`
+                      : user.username.slice(0, 2).toUpperCase()
+                    }
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.firstName && user.lastName 
+                      ? `${user.firstName} ${user.lastName}`
+                      : user.username
+                    }
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user.role === 'admin' ? '管理员' : 
+                     user.role === 'manager' ? '经理' : '员工'}
+                    {user.ssoId && ' (SSO)'}
+                  </p>
+                </div>
+              </div>
+
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onLogout}
+                className="w-full text-sm"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                退出登录
+              </Button>
+            </div>
+          )}
         </div>
-        <button 
-          onClick={onLogout}
-          className="mt-3 w-full flex items-center justify-center px-4 py-2 text-sm text-neutral-600 border border-neutral-300 rounded-md hover:bg-neutral-100 transition"
-        >
-          <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Logout
-        </button>
       </div>
     </aside>
   );
