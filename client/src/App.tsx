@@ -111,18 +111,22 @@ function Router() {
         console.log('User authenticated:', userData);
         setUser(userData);
       } catch (error) {
-        console.log('User not authenticated, attempting auto-login');
+        console.log('User not authenticated');
         // 如果认证失败，检查是否有SSO回调参数
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('token') || urlParams.get('userId')) {
           // 有SSO参数，说明可能是SSO回调，保持loading状态让SSO处理
           console.log('SSO callback detected, waiting for redirect...');
+          // 设置一个超时，防止无限等待
+          setTimeout(() => {
+            console.log('SSO callback timeout, showing login page');
+            setLoading(false);
+          }, 5000);
           return;
         }
         console.error('Authentication check failed', error);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     }
 
     checkAuth();
